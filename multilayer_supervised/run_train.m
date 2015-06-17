@@ -43,12 +43,37 @@ options.maxFunEvals = 296; %TODO:it was 1e6, but that takes too long time.
 options.Method = 'lbfgs';
 options.useMex = 0;
 
+if exist('neuralParams.oct', 'file')
+    options.maxFunEvals = 132;
+    load neuralParams.oct
+    params = opt_params;
+    params = params ./ max(abs(params));
+    params += stack2params(stack); %Still want the random thing...
+end
+
+kaggleComp = exist('train.csv', 'file')
+if kaggleComp
+    trainMatrix = csvread('train.csv');
+    testMatrix = csvread('test.csv');
+    data_train = trainMatrix(2:41000, 2:785)';
+    data_train = double(data_train)/255;
+    labels_train = trainMatrix(2:41000, 1);
+    labels_train = labels_train + 10*(labels_train == 0);
+    data_test = trainMatrix(41000:end, 2:785)';
+    data_test = double(data_test)/255;
+    labels_test = trainMatrix(41000:end, 1);
+    labels_test = labels_test + 10*(labels_test == 0);
+    data_kaggle = testMatrix(2:end,:)';
+end
+
 warning ("off", "Octave:broadcast")
 %grad_err = grad_check(@supervised_dnn_cost,...
 %    params, 3, ei, data_train(:,1:789), labels_train(1:789))
 %% run training
 [opt_params,opt_value,exitflag,output] = minFunc(@supervised_dnn_cost,...
     params,options,ei, data_train, labels_train);
+
+save neuralParams.oct opt_params
 
 %% compute accuracy on the test and train set
 [~, ~, pred] = supervised_dnn_cost( opt_params, ei, data_test, [], true);
@@ -62,3 +87,10 @@ fprintf('test accuracy: %f\n', acc_test);
 acc_train = mean(pred'==labels_train);
 fprintf('train accuracy: %f\n', acc_train);
 [cost, ~, ~] = supervised_dnn_cost( opt_params, ei, data_train, labels_train)
+
+if kaggleComp
+    [~, ~, pred] = supervised_dnn_cost( opt_params, ei, data_kaggle, [], true);
+    [~,pred] = max(pred);
+    pred = mod(pred, 10);
+    csvwrite('testOut.csv', [(1:size(pred,2))', pred']);
+end
