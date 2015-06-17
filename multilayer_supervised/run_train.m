@@ -39,9 +39,13 @@ params = stack2params(stack);
 %% setup minfunc options
 options = [];
 options.display = 'iter';
-options.maxFunEvals = 1e6;
+options.maxFunEvals = 296; %TODO:it was 1e6, but that takes too long time.
 options.Method = 'lbfgs';
+options.useMex = 0;
 
+warning ("off", "Octave:broadcast")
+%grad_err = grad_check(@supervised_dnn_cost,...
+%    params, 3, ei, data_train(:,1:789), labels_train(1:789))
 %% run training
 [opt_params,opt_value,exitflag,output] = minFunc(@supervised_dnn_cost,...
     params,options,ei, data_train, labels_train);
@@ -51,8 +55,10 @@ options.Method = 'lbfgs';
 [~,pred] = max(pred);
 acc_test = mean(pred'==labels_test);
 fprintf('test accuracy: %f\n', acc_test);
+[cost, ~, ~] = supervised_dnn_cost( opt_params, ei, data_test, labels_test)
 
 [~, ~, pred] = supervised_dnn_cost( opt_params, ei, data_train, [], true);
 [~,pred] = max(pred);
 acc_train = mean(pred'==labels_train);
 fprintf('train accuracy: %f\n', acc_train);
+[cost, ~, ~] = supervised_dnn_cost( opt_params, ei, data_train, labels_train)
